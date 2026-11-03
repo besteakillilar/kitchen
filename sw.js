@@ -1,27 +1,25 @@
-const SURUM = 'mutfak-v2';
+const SURUM = 'mutfak-v3-ozel';
 const DOSYALAR = ['./', './index.html', './ayarlar.js', './manifest.webmanifest',
-                  './ikon-192.png', './ikon-512.png', './apple-touch-icon.png'];
-
+  './ikon-192.png', './ikon-512.png', './ikon-maskable-512.png', './apple-touch-icon.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(SURUM).then(c => c.addAll(DOSYALAR)).then(() => self.skipWaiting()));
 });
-
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(adlar =>
-    Promise.all(adlar.filter(a => a !== SURUM).map(a => caches.delete(a)))
-  ).then(() => self.clients.claim()));
+  e.waitUntil(caches.keys().then(adlar => Promise.all(
+    adlar.filter(a => a.startsWith('mutfak-') && a !== SURUM).map(a => caches.delete(a))
+  )).then(() => self.clients.claim()));
 });
-
-// Firestore trafiğine karışma; gerisinde önce ağ, olmazsa önbellek
+// Sadece uygulama dosyaları: kimlik doğrulama ve veritabanı yanıtları asla saklanmaz.
 self.addEventListener('fetch', e => {
-  const u = e.request.url;
-  if (e.request.method !== 'GET') return;
-  if (u.includes('firestore.googleapis.com') || u.includes('google-analytics')) return;
-  e.respondWith(
-    fetch(e.request).then(cevap => {
+  if(e.request.method !== 'GET') return;
+  const url = new URL(e.request.url);
+  const izinli = DOSYALAR.map(yol => new URL(yol, self.registration.scope).href);
+  if(url.origin !== self.location.origin || !izinli.includes(url.href)) return;
+  e.respondWith(fetch(e.request).then(cevap => {
+    if(cevap.ok) {
       const kopya = cevap.clone();
-      caches.open(SURUM).then(c => c.put(e.request, kopya)).catch(() => {});
-      return cevap;
-    }).catch(() => caches.match(e.request).then(v => v || caches.match('./index.html')))
-  );
+      e.waitUntil(caches.open(SURUM).then(c => c.put(e.request, kopya)));
+    }
+    return cevap;
+  }).catch(async () => (await caches.match(e.request)) || Response.error()));
 });

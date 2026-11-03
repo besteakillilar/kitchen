@@ -1,12 +1,5 @@
-/*  Emre'nin Mutfağı — ortak mutfak ayarları
- *  Bu dosya senin Firebase projene göre dolduruldu, dokunmana gerek yok.
- *
- *  TEK KONTROL: aşağıdaki mutfakKodu, Firestore → Rules sayfasındaki
- *  satırda yazan kodun BİREBİR AYNISI olmalı:
- *      allow read, write: if mutfak == 'mutfak-7kq2xz';
- *  Kurallara farklı bir kod yazdıysan buradaki satırı ona göre değiştir
- *  (ya da kurallardaki kodu bununla değiştirip Publish de).
- */
+/* Firebase bağlantı bilgileri herkese açık olabilir. Erişimi firestore.rules korur.
+ * mutfakKodu bir parola değildir; mevcut veri yoludur. */
 window.MUTFAK_AYARLARI = {
 
   mutfakKodu: "mutfak-7kq2xz",

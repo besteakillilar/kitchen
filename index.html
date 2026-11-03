@@ -390,7 +390,7 @@
 
   /* ---------- depolama: cihazın kendi hafızası ---------- */
   const ON_EK = 'emrenin-mutfagi:';
-  const yerelAnahtar = (a, ortak) => ON_EK + (ortak ? 'ortak:' : 'ben:') + a;
+  const yerelAnahtar = (a, ortak) => ON_EK + (ortak ? 'ortak:' : 'hesap:' + (OTURUM.kullanici?.uid || 'kapali') + ':') + a;
   async function oku(anahtar, ortak=false){
     try{ const d = localStorage.getItem(yerelAnahtar(anahtar, ortak)); return d ? JSON.parse(d) : null; }
     catch(e){ return null; }
@@ -404,6 +404,93 @@
   }
   /* ---------- ortak mutfak (Firebase) ---------- */
   let BULUT = null;
+  let AUTH, A, F, DB, BULUT_ADAYI;
+  let oturumSurumu = 0;
+  let dinleyiciler = [];
+  const OTURUM = {durum:'yukleniyor', kullanici:null, mesaj:''};
+
+  function veriyiTemizle(){
+    dinleyiciler.forEach(dur => dur()); dinleyiciler = [];
+    BULUT = null;
+    Object.assign(D, {dizin:[], liste:[], favoriler:[], isaretler:{}, ben:'',
+      acikTarif:null, taslak:null, arama:'', girdi:'', ekran:'acilis', hazir:false});
+    kapat();
+  }
+  function girisEkrani(){
+    const u = OTURUM.kullanici;
+    return `<main style="min-height:100dvh;display:grid;place-items:center;padding:24px">
+      <section style="max-width:420px;width:100%;text-align:center;background:var(--kart);padding:32px 24px;border-radius:28px;box-shadow:0 8px 40px #573c2310">
+        <img src="ikon-192.png" alt="" width="88" height="88" style="border-radius:24px">
+        <h1 style="font-family:'Baloo 2',sans-serif">Emre’nin Mutfağı</h1>
+        <p>İkimize ait tarifler, birlikte hazırladığımız listeler.</p>
+        <p role="status" style="line-height:1.6">${kacir(OTURUM.mesaj || (OTURUM.durum==='yukleniyor' ? 'Giriş kontrol ediliyor…' : 'Mutfağa girmek için Google hesabını seç.'))}</p>
+        ${u ? `<p>${kacir(u.email || '')}</p><details style="margin:20px 0"><summary>Hesap kimliğim</summary><p style="overflow-wrap:anywhere;user-select:all">${kacir(u.uid)}</p><small>İlk kurulumda bu kimlik erişim listesine eklenir.</small></details>` : ''}
+        ${OTURUM.durum!=='yukleniyor' ? `<button class="dugme" data-eylem="${u?'erisim-yenile':'google-giris'}" ${!AUTH?'disabled':''}>${u?'Erişimi tekrar kontrol et':'Google ile giriş yap'}</button>
+        ${u?'<p><button class="dugme ikincil" data-eylem="cikis">Hesaptan çık</button></p>':''}
+        ${!AUTH?'<p><button class="dugme ikincil" data-eylem="yeniden-baslat">Tekrar dene</button></p>':''}` : ''}
+      </section></main>`;
+  }
+  async function googleGiris(){
+    try{
+      const saglayici = new A.GoogleAuthProvider();
+      saglayici.setCustomParameters({prompt:'select_account'});
+      await A.signInWithPopup(AUTH, saglayici);
+    }catch(e){
+      const mesajlar = {
+        'auth/popup-closed-by-user':'Giriş iptal edildi. Hazır olduğunda tekrar deneyebilirsin.',
+        'auth/popup-blocked':'Giriş penceresi engellendi. Safari veya Chrome’da açıp açılır pencerelere izin ver.',
+        'auth/unauthorized-domain':'Bu site adresinin Firebase giriş ayarlarına eklenmesi gerekiyor.',
+        'auth/operation-not-allowed':'Firebase’de Google ile giriş henüz etkinleştirilmemiş.',
+        'auth/network-request-failed':'Bağlantı kurulamadı. İnternetini kontrol edip tekrar dene.'
+      };
+      OTURUM.mesaj = mesajlar[e.code] || 'Giriş tamamlanamadı. Tekrar deneyebilirsin.'; ciz();
+    }
+  }
+  async function cikis(){
+    ++oturumSurumu; veriyiTemizle(); OTURUM.durum='yukleniyor'; OTURUM.mesaj='Çıkış yapılıyor…'; ciz();
+    try{ await A.signOut(AUTH); }
+    catch(e){ OTURUM.durum='kapali'; OTURUM.mesaj='Çıkış tamamlanamadı. Tekrar dene.'; ciz(); }
+  }
+  async function oturumDegisti(kullanici){
+    const surum = ++oturumSurumu;
+    veriyiTemizle(); OTURUM.kullanici=kullanici; OTURUM.durum=kullanici?'yukleniyor':'kapali'; OTURUM.mesaj=''; ciz();
+    if(!kullanici) return;
+    try{
+      // Yetkiyi her yeni oturumda sunucudan doğrula; eski önbelleğe güvenme.
+      const ref = F.doc(DB, 'erisim', 'mutfak');
+      const belge = await F.getDocFromServer(ref);
+      if(surum!==oturumSurumu) return;
+      const uidler = belge.exists() ? belge.data().uidler : null;
+      if(!Array.isArray(uidler) || uidler.length!==2 || new Set(uidler).size!==2 || !uidler.includes(kullanici.uid)) throw new Error('yetkisiz');
+      BULUT=BULUT_ADAYI; OTURUM.durum='acik';
+      const [favoriler, isaretler, ben] = await Promise.all([oku(K.favori), oku(K.isaret), oku(K.ben)]);
+      if(surum!==oturumSurumu) return;
+      D.favoriler=favoriler||[]; D.isaretler=isaretler||{}; D.ben=ben||kullanici.displayName||'';
+      const hata = e => {
+        if(surum!==oturumSurumu) return;
+        ++oturumSurumu; veriyiTemizle(); OTURUM.durum='kapali';
+        OTURUM.mesaj=e.code==='permission-denied' ? 'Bu hesabın mutfağa erişim izni yok.' : 'Bağlantı doğrulanamadı. İnternetini kontrol edip tekrar dene.'; ciz();
+      };
+      dinleyiciler.push(F.onSnapshot(ref, belge=>{
+        if(surum!==oturumSurumu) return;
+        const ids=belge.data()?.uidler;
+        if(!Array.isArray(ids) || ids.length!==2 || new Set(ids).size!==2 || !ids.includes(kullanici.uid)) hata({code:'permission-denied'});
+      }, hata));
+      dinleyiciler.push(BULUT.tarifleriDinle(kayitlar=>{
+        if(surum!==oturumSurumu) return;
+        D.dizin=kayitlar.sort((a,b)=>(b.tarih||0)-(a.tarih||0)); veriDegisti();
+      }, hata));
+      dinleyiciler.push(BULUT.listeyiDinle(urunler=>{
+        if(surum!==oturumSurumu) return;
+        D.liste=urunler; veriDegisti();
+      }, hata));
+      D.hazir=true; ciz();
+    }catch(e){
+      if(surum!==oturumSurumu) return;
+      veriyiTemizle(); OTURUM.durum='kapali';
+      OTURUM.mesaj=(e.code==='permission-denied'||e.message==='yetkisiz') ? 'Bu hesap için erişim açılmamış. Yalnızca iki izinli hesap mutfağa girebilir.' : 'Erişim doğrulanamadı. İnternet bağlantını kontrol edip tekrar dene.'; ciz();
+    }
+  }
   const SURUM_FB = '10.12.5';
 
   function ayarlarVar(){
@@ -414,24 +501,25 @@
 
   async function bulutuBaslat(){
     if(!ayarlarVar()) return null;
-    const [{ initializeApp }, F] = await Promise.all([
+    const [{ initializeApp, getApps, getApp }, firestore, auth] = await Promise.all([
       import(`https://www.gstatic.com/firebasejs/${SURUM_FB}/firebase-app.js`),
-      import(`https://www.gstatic.com/firebasejs/${SURUM_FB}/firebase-firestore.js`)
+      import(`https://www.gstatic.com/firebasejs/${SURUM_FB}/firebase-firestore.js`),
+      import(`https://www.gstatic.com/firebasejs/${SURUM_FB}/firebase-auth.js`)
     ]);
-    const uyg = initializeApp(window.MUTFAK_AYARLARI.firebase);
-    let db;
-    try{
-      db = F.initializeFirestore(uyg, { localCache: F.persistentLocalCache({ tabManager: F.persistentMultipleTabManager() }) });
-    }catch(e){ db = F.getFirestore(uyg); }
+    F=firestore; A=auth;
+    const uyg = getApps().length ? getApp() : initializeApp(window.MUTFAK_AYARLARI.firebase);
+    // Tarifleri diskte kalıcı önbelleğe alma; çıkışta sonraki hesaba taşınmasın.
+    const db = F.initializeFirestore(uyg, {localCache:F.memoryLocalCache()});
+    DB=db; AUTH=A.getAuth(uyg);
     const kod = String(window.MUTFAK_AYARLARI.mutfakKodu);
     const kol = ad => F.collection(db, 'mutfaklar', kod, ad);
     const bel = (ad, id) => F.doc(db, 'mutfaklar', kod, ad, String(id));
     return {
-      tarifleriDinle(cb){ F.onSnapshot(kol('tarifler'), g => cb(g.docs.map(d=>d.data())), h => console.error('tarifler', h)); },
-      listeyiDinle(cb){ F.onSnapshot(kol('liste'), g => cb(g.docs.map(d=>d.data())), h => console.error('liste', h)); },
+      tarifleriDinle(cb, hata){ return F.onSnapshot(kol('tarifler'), g => cb(g.docs.map(d=>d.data())), hata); },
+      listeyiDinle(cb, hata){ return F.onSnapshot(kol('liste'), g => cb(g.docs.map(d=>d.data())), hata); },
       async tarifAl(id){ const d = await F.getDoc(bel('tarif-detay', id)); return d.exists() ? d.data() : null; },
-      async tarifYaz(t, ozet){ await F.setDoc(bel('tarif-detay', t.id), t); await F.setDoc(bel('tarifler', t.id), ozet); return true; },
-      async tarifSil(id){ await F.deleteDoc(bel('tarif-detay', id)); await F.deleteDoc(bel('tarifler', id)); },
+      async tarifYaz(t, ozet){ const batch=F.writeBatch(db); batch.set(bel('tarif-detay',t.id),t); batch.set(bel('tarifler',t.id),ozet); await batch.commit(); return true; },
+      async tarifSil(id){ const batch=F.writeBatch(db); batch.delete(bel('tarif-detay',id)); batch.delete(bel('tarifler',id)); await batch.commit(); },
       async urunYaz(u){ await F.setDoc(bel('liste', u.id), u); },
       async urunSil(id){ await F.deleteDoc(bel('liste', id)); },
       async urunleriSil(idler){ await Promise.all(idler.map(i => F.deleteDoc(bel('liste', i)))); }
@@ -439,40 +527,23 @@
   }
 
   /* ---------- veri işlemleri: bulut varsa bulut, yoksa cihaz ---------- */
-  async function tarifGetir(id){
-    if(BULUT) return BULUT.tarifAl(id);
-    return oku(K.tarif(id), true);
+  function bulutGerekli(){
+    if(OTURUM.durum!=='acik' || !BULUT) throw new Error('Önce izinli hesabınla giriş yap.');
+    return BULUT;
   }
+  async function tarifGetir(id){ return bulutGerekli().tarifAl(id); }
   async function tarifKaydet(t, ozet){
-    if(BULUT){ try{ await BULUT.tarifYaz(t, ozet); return true; }catch(e){ console.error(e); return false; } }
-    const ok = await yaz(K.tarif(t.id), t, true);
-    if(!ok) return false;
-    await dizineYaz(ozet);
-    return true;
+    try{ await bulutGerekli().tarifYaz(t,ozet); return true; }
+    catch(e){ console.error(e); return false; }
   }
-  async function tarifKaldir(id){
-    if(BULUT){ await BULUT.tarifSil(id); return; }
-    await sil(K.tarif(id), true); await dizindenCikar(id);
-  }
+  async function tarifKaldir(id){ await bulutGerekli().tarifSil(id); }
   async function urunKaydet(u){
-    if(BULUT){
-      const v = D.liste.slice(); const i = v.findIndex(x=>x.id===u.id);
-      if(i>=0) v[i]=u; else v.push(u);
-      D.liste = v; ciz();
-      try{ await BULUT.urunYaz(u); }catch(e){ bildir('Kaydedilemedi, bağlantını kontrol et'); }
-      return;
-    }
-    await listeGuncelle(a=>{ const v=a.slice(); const i=v.findIndex(x=>x.id===u.id); if(i>=0)v[i]=u; else v.push(u); return v; });
+    await bulutGerekli().urunYaz(u);
   }
-  async function urunKaldir(id){
-    if(BULUT){ D.liste = D.liste.filter(x=>x.id!==id); ciz(); try{ await BULUT.urunSil(id); }catch(e){} return; }
-    await listeGuncelle(a=>a.filter(u=>u.id!==id));
-  }
+  async function urunKaldir(id){ await bulutGerekli().urunSil(id); }
   async function alinanlariSil(){
-    const idler = D.liste.filter(u=>u.bitti).map(u=>u.id);
-    if(!idler.length) return;
-    if(BULUT){ D.liste = D.liste.filter(u=>!u.bitti); ciz(); try{ await BULUT.urunleriSil(idler); }catch(e){} return; }
-    await listeGuncelle(a=>a.filter(u=>!u.bitti));
+    const idler=D.liste.filter(u=>u.bitti).map(u=>u.id);
+    if(idler.length) await bulutGerekli().urunleriSil(idler);
   }
 
   function dosyaIndir(ad, icerik){
@@ -496,29 +567,17 @@
       let eklenen = 0;
       for(const t of paket.tarifler){
         if(!t || !t.id) continue;
-        await tarifKaydet(t, {id:t.id, ad:t.ad, ogunler:ogunleri(t), sure:t.sure, zorluk:t.zorluk, kucuk:t.kucuk||'', ekleyen:t.ekleyen, tarih:t.tarih||Date.now()});
+        const kaydedildi = await tarifKaydet(t, {id:t.id, ad:t.ad, ogunler:ogunleri(t), sure:t.sure, zorluk:t.zorluk, kucuk:t.kucuk||'', ekleyen:t.ekleyen, tarih:t.tarih||Date.now()});
+        if(!kaydedildi) throw new Error('Tarif kaydedilemedi');
         eklenen++;
       }
       if(Array.isArray(paket.liste) && paket.liste.length){
         const adlar = new Set(D.liste.map(u=>u.ad));
         for(const u of paket.liste){ if(u && u.ad && !adlar.has(u.ad)) await urunKaydet({id:u.id||yeniId(), ad:u.ad, grup:GRUPLAR.includes(u.grup)?u.grup:'Diğer', bitti:!!u.bitti}); }
       }
-      kapat(); await yukle();
+      kapat();
       bildir(eklenen+' tarif eklendi ♡');
     }catch(e){ console.error(e); bildir('Dosya okunamadı, yedek dosyası olduğundan emin ol'); }
-  }
-
-  async function dizineYaz(kayit){
-    const guncel = (await oku(K.dizin,true)) || [];
-    const harita = new Map(guncel.map(t=>[t.id,t]));
-    harita.set(kayit.id, kayit);
-    D.dizin = [...harita.values()].sort((a,b)=>b.tarih-a.tarih);
-    return yaz(K.dizin, D.dizin, true);
-  }
-  async function dizindenCikar(id){
-    const guncel = (await oku(K.dizin,true)) || [];
-    D.dizin = guncel.filter(t=>t.id!==id);
-    return yaz(K.dizin, D.dizin, true);
   }
 
   /* ---------- yardımcılar ---------- */
@@ -933,6 +992,7 @@
 
   function ciz(){
     const k = document.getElementById('uygulama');
+    if(OTURUM.durum!=='acik'){ k.innerHTML=girisEkrani(); return; }
     let govde='';
     if(!D.hazir) govde = `<div class="yukleniyor">Mutfak hazırlanıyor…</div>`;
     else if(D.ekran==='acilis') govde = acilisEkrani();
@@ -1001,13 +1061,6 @@
   }
 
   /* ---------- ev listesi işlemleri ---------- */
-  async function listeGuncelle(islem){
-    const guncel = (await oku(K.liste,true)) || D.liste;   // önce en tazesini al, üstüne yaz
-    D.liste = islem(guncel);
-    ciz();
-    const tamam = await yaz(K.liste, D.liste, true);
-    if(!tamam) bildir('Liste kaydedilemedi, tekrar dene');
-  }
   async function urunEkle(){
     const girdi = document.querySelector('[data-eylem="liste-girdi"]');
     const ad = ((girdi?girdi.value:'') || D.girdi || '').trim();
@@ -1021,6 +1074,11 @@
   document.getElementById('uygulama').addEventListener('click', async e=>{
     const d = e.target.closest('[data-eylem]');
     const simdiki = d ? d.dataset.eylem : '';
+    if(simdiki==='google-giris'){ await googleGiris(); return; }
+    if(simdiki==='cikis'){ await cikis(); return; }
+    if(simdiki==='erisim-yenile'){ await oturumDegisti(AUTH.currentUser); return; }
+    if(simdiki==='yeniden-baslat'){ location.reload(); return; }
+    if(OTURUM.durum!=='acik') return;
     if(D.ogunAcik && !e.target.closest('.acilir')){
       if(D.ekran==='form') formuOku();
       D.ogunAcik = false;
@@ -1029,6 +1087,7 @@
     if(!d) return;
     const eylem = simdiki, deger = d.dataset.deger;
 
+    try {
     if(eylem==='gir'){
       const perde = document.getElementById('acilis');
       const yavas = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1091,6 +1150,7 @@
 
     else if(eylem==='tarif-sil'){ silmeOnayi(D.acikTarif); }
     else if(eylem==='paylasim-bilgisi'){ paylasimKutusu(); }
+    } catch(e){ bildir('İşlem tamamlanamadı. Bağlantını kontrol edip tekrar dene.'); ciz(); }
   });
 
   document.getElementById('uygulama').addEventListener('input', e=>{
@@ -1106,9 +1166,9 @@
     }
   });
 
-  document.getElementById('uygulama').addEventListener('keydown', e=>{
+  document.getElementById('uygulama').addEventListener('keydown', async e=>{
     const d=e.target.closest('[data-eylem]'); if(!d) return;
-    if(d.dataset.eylem==='liste-girdi' && e.key==='Enter'){ e.preventDefault(); urunEkle(); }
+    if(d.dataset.eylem==='liste-girdi' && e.key==='Enter'){ e.preventDefault(); try{ await urunEkle(); }catch(e){ bildir('Ürün kaydedilemedi. Tekrar dene.'); } }
     if(d.dataset.eylem==='liste-degistir' && (e.key==='Enter'||e.key===' ')){ e.preventDefault(); d.click(); }
   });
 
@@ -1122,7 +1182,9 @@
       if(ev.target===p){ kapat(); return; }
       const d = ev.target.closest('[data-eylem]');
       if(!d) return;
+      try {
       if(d.dataset.eylem==='kapat') kapat();
+      else if(d.dataset.eylem==='cikis') await cikis();
       else if(d.dataset.eylem==='disa-aktar') disaAktar();
       else if(d.dataset.eylem==='sil-onayla'){
         const t = D.acikTarif; if(!t) return;
@@ -1131,6 +1193,7 @@
         D.favoriler = D.favoriler.filter(x=>x!==t.id); yaz(K.favori, D.favoriler);
         kapat(); D.acikTarif=null; D.ekran='tarifler'; ciz(); bildir('Tarif silindi');
       }
+      } catch(e){ bildir('İşlem tamamlanamadı. Tekrar dene.'); d.disabled=false; d.textContent='Tekrar dene'; }
     });
     document.body.appendChild(p);
     const ilk = p.querySelector('button'); if(ilk) ilk.focus();
@@ -1142,14 +1205,9 @@
       <button class="dugme" style="background:var(--kirmizi)" data-eylem="sil-onayla">Evet, sil</button></div>`);
   }
   function paylasimKutusu(){
-    const canli = !!BULUT;
-    perdeAc(`<h3>${canli ? 'Ortak mutfak açık' : 'Bu cihazda çalışıyor'}</h3>
-      ${canli
-        ? `<p style="line-height:1.6">Tarifler ve alışveriş listesi <b>ortak</b>. Aynı adresi açan herkes aynı listeyi görüyor;
-             biri bir şey eklediğinde diğerinin ekranında kendiliğinden beliriyor.</p>
-           <p style="line-height:1.6">Emre'nin yapması gereken tek şey bu adresi açmak. İsterse telefonunda ana ekrana da ekleyebilir.</p>`
-        : `<p style="line-height:1.6">Ortak mutfak ayarları bulunamadı ya da bağlantı kurulamadı; uygulama şu an
-             <b>sadece bu cihazın hafızasını</b> kullanıyor. Ayarları düzeltince tarifler ortaklaşır.</p>`}
+    perdeAc(`<h3>İkimizin mutfağı</h3>
+      <p style="line-height:1.6">${kacir(OTURUM.kullanici?.email || '')} hesabıyla giriş yaptın. Tarifler ve alışveriş listesi yalnızca izinli iki hesaba açık.</p>
+      <p><button class="dugme ikincil" data-eylem="cikis">Hesaptan çık</button></p>
       <div class="dugme-satiri">
         <button class="dugme" data-eylem="disa-aktar">Yedek dosyası indir</button>
         <label class="dugme ikincil" for="yedek-dosya" style="cursor:pointer">Yedekten yükle
@@ -1169,28 +1227,16 @@
   }
 
   async function yukle(){
-    const [favoriler, isaretler, ben] = await Promise.all([oku(K.favori), oku(K.isaret), oku(K.ben)]);
-    D.favoriler = favoriler || []; D.isaretler = isaretler || {}; D.ben = ben || '';
-    if(!GRUPLAR.includes(D.grup)) D.grup = GRUPLAR[0];
-
-    try{ BULUT = await bulutuBaslat(); }
-    catch(e){ console.error('Ortak mutfağa bağlanılamadı:', e); BULUT = null; }
-
-    if(BULUT){
-      BULUT.tarifleriDinle(kayitlar=>{
-        D.dizin = kayitlar.sort((a,b)=>(b.tarih||0)-(a.tarih||0));
-        D.hazir = true; veriDegisti();
+    ciz();
+    try{
+      if(!ayarlarVar()) throw new Error('ayarlar');
+      BULUT_ADAYI=await bulutuBaslat();
+      A.onAuthStateChanged(AUTH, oturumDegisti, ()=>{
+        ++oturumSurumu; veriyiTemizle(); OTURUM.durum='kapali'; OTURUM.mesaj='Oturum doğrulanamadı. Sayfayı yenileyip tekrar dene.'; ciz();
       });
-      BULUT.listeyiDinle(urunler=>{
-        D.liste = urunler;
-        D.hazir = true; veriDegisti();
-      });
-      setTimeout(()=>{ if(!D.hazir){ D.hazir = true; ciz(); } }, 5000);
-    }else{
-      const [dizin, liste] = await Promise.all([oku(K.dizin,true), oku(K.liste,true)]);
-      D.dizin = dizin || []; D.liste = liste || [];
+    }catch(e){
+      OTURUM.durum='kapali'; OTURUM.mesaj='Giriş hizmetine bağlanılamadı. Bağlantını ve uygulama ayarlarını kontrol et.'; ciz();
     }
-    D.hazir = true; ciz();
   }
   yukle();
 })();
