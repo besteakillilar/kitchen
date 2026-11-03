@@ -10,7 +10,7 @@
 <link rel="icon" href="ikon-192.png" sizes="192x192">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Emre'nin Mutfağı">
 </head>
 <body>
@@ -142,7 +142,7 @@
   .tencere-yazi{font-family:'Baloo 2','Nunito',sans-serif;font-size:16px;color:var(--yesil-koyu);font-weight:600;line-height:1.6;transition:opacity .3s ease;}
   .acilis.aciliyor .tencere-yazi{opacity:0;}
   .girisle{animation:girisle .55s ease both;}
-  @keyframes girisle{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:none;}}
+  @keyframes girisle{from{opacity:0;}to{opacity:1;}}
   @media(max-height:700px){.acilis > img{max-height:48vh;}.tencere{width:146px;}}
 
   /* ---------- üst görsel ---------- */
@@ -153,7 +153,7 @@
   }
   .ust-panel{
     background:#FDF9F0;border-radius:34px 34px 0 0;margin-top:-26px;position:relative;
-    padding:26px 0 24px;min-height:56vh;
+    padding:26px 0 24px;min-height:56svh;
   }
   .soru{font-size:26px;margin:0 0 4px;line-height:1.45;}
   .soru-alt{margin:0;color:var(--soluk);font-size:15px;}
@@ -374,7 +374,7 @@
   /* Telefon yerleşimi: güvenli alanlar, taşmayan içerik ve dokunma hedefleri. */
   html{background:var(--krem);-webkit-text-size-adjust:100%;scroll-padding-bottom:120px;}
   body{background:var(--krem);}
-  #uygulama{min-height:100dvh;padding-bottom:calc(112px + env(safe-area-inset-bottom,0px));}
+  #uygulama{min-height:100svh;padding-bottom:calc(112px + env(safe-area-inset-bottom,0px));}
   #uygulama[data-ekran="giris"],#uygulama[data-ekran="acilis"]{padding-bottom:0;}
   button,input,textarea,select{-webkit-tap-highlight-color:transparent;}
   button,a,label[for]{touch-action:manipulation;}
@@ -401,11 +401,11 @@
   .ekle-dugme{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
   .bildirim{bottom:calc(96px + env(safe-area-inset-bottom,0px));width:max-content;max-width:calc(100% - 32px);text-align:center;border-radius:18px;overflow-wrap:anywhere;}
   .acilis{padding-top:max(16px,env(safe-area-inset-top,0px));padding-bottom:max(20px,env(safe-area-inset-bottom,0px));overflow-y:auto;}
-  .acilis > img{max-height:54dvh;flex-shrink:1;min-height:0;}
+  .acilis > img{max-height:54svh;flex-shrink:1;min-height:0;}
   .tencere-alan{flex-shrink:0;}
   .perde{padding:max(16px,env(safe-area-inset-top,0px)) 16px max(16px,env(safe-area-inset-bottom,0px));}
   .kutucuk{max-height:calc(100dvh - 48px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));overscroll-behavior:contain;}
-  .giris-sayfa{min-height:100dvh;display:grid;place-items:center;padding:max(24px,env(safe-area-inset-top,0px)) 20px max(24px,env(safe-area-inset-bottom,0px));}
+  .giris-sayfa{min-height:100svh;display:grid;place-items:center;padding:max(24px,env(safe-area-inset-top,0px)) 20px max(24px,env(safe-area-inset-bottom,0px));}
   .giris-kart{max-width:420px;min-width:0;width:100%;text-align:center;background:var(--kart);padding:28px 22px;border-radius:28px;box-shadow:var(--golge);}
   .giris-kart h1{font-size:clamp(26px,7vw,32px);line-height:1.25;margin:18px 0 12px;}
   .giris-kart p{overflow-wrap:anywhere;line-height:1.6;font-size:16px;}
@@ -449,6 +449,34 @@
     .giris-kart{padding:24px 18px;}
     .liste-ozet{flex-wrap:wrap;}
     .tarif-izgara{gap:8px;}
+  }
+
+
+  /* Sabit, opak alt bar; iOS güvenli alanı ve sakin kaydırma. */
+  html,body{overscroll-behavior-y:none;background:#FBF5E9;}
+  #uygulama{padding-top:env(safe-area-inset-top,0px);}
+  body::before{
+    content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);
+    background:var(--yesil-koyu);z-index:70;pointer-events:none;
+  }
+  .ust-bar{padding-top:12px;}
+  .alt-menu{
+    left:0;right:0;bottom:0;transform:none;width:100%;max-width:none;
+    border:0;border-top:1px solid var(--cizgi);border-radius:0;
+    background:#FFFDF7;box-shadow:0 -4px 18px rgba(120,100,70,.06);
+    grid-template-columns:repeat(4,minmax(0,130px));justify-content:center;
+    padding:8px max(12px,env(safe-area-inset-right,0px))
+      calc(8px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));
+    gap:0;
+  }
+  .menu-dugme{min-height:58px;border-radius:16px;gap:4px;padding:7px 2px;font-size:11px;white-space:nowrap;}
+  .menu-dugme .ikon{font-size:21px;line-height:24px;}
+  .ekle-dugme{bottom:calc(90px + env(safe-area-inset-bottom,0px));}
+  .bildirim{bottom:calc(90px + env(safe-area-inset-bottom,0px));}
+  .kapak-alan img{height:auto;}
+  @media(hover:none){
+    .ogun:hover,.tarif-kart:hover{transform:none;}
+    .tencere:hover .kapak{transform:none;}
   }
 
 </style>
