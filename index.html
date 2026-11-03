@@ -461,7 +461,7 @@
       const belge = await F.getDocFromServer(ref);
       if(surum!==oturumSurumu) return;
       const uidler = belge.exists() ? belge.data().uidler : null;
-      if(!Array.isArray(uidler) || uidler.length!==2 || new Set(uidler).size!==2 || !uidler.includes(kullanici.uid)) throw new Error('yetkisiz');
+      if(!Array.isArray(uidler) || uidler.length<1 || uidler.length>2 || new Set(uidler).size!==uidler.length || !uidler.includes(kullanici.uid)) throw new Error('yetkisiz');
       BULUT=BULUT_ADAYI; OTURUM.durum='acik';
       const [favoriler, isaretler, ben] = await Promise.all([oku(K.favori), oku(K.isaret), oku(K.ben)]);
       if(surum!==oturumSurumu) return;
@@ -474,7 +474,7 @@
       dinleyiciler.push(F.onSnapshot(ref, belge=>{
         if(surum!==oturumSurumu) return;
         const ids=belge.data()?.uidler;
-        if(!Array.isArray(ids) || ids.length!==2 || new Set(ids).size!==2 || !ids.includes(kullanici.uid)) hata({code:'permission-denied'});
+        if(!Array.isArray(ids) || ids.length<1 || ids.length>2 || new Set(ids).size!==ids.length || !ids.includes(kullanici.uid)) hata({code:'permission-denied'});
       }, hata));
       dinleyiciler.push(BULUT.tarifleriDinle(kayitlar=>{
         if(surum!==oturumSurumu) return;
@@ -488,7 +488,7 @@
     }catch(e){
       if(surum!==oturumSurumu) return;
       veriyiTemizle(); OTURUM.durum='kapali';
-      OTURUM.mesaj=(e.code==='permission-denied'||e.message==='yetkisiz') ? 'Bu hesap için erişim açılmamış. Yalnızca iki izinli hesap mutfağa girebilir.' : 'Erişim doğrulanamadı. İnternet bağlantını kontrol edip tekrar dene.'; ciz();
+      OTURUM.mesaj=(e.code==='permission-denied'||e.message==='yetkisiz') ? 'Bu hesap için erişim açılmamış. Yalnızca izin verilen hesaplar mutfağa girebilir.' : 'Erişim doğrulanamadı. İnternet bağlantını kontrol edip tekrar dene.'; ciz();
     }
   }
   const SURUM_FB = '10.12.5';
@@ -1206,7 +1206,7 @@
   }
   function paylasimKutusu(){
     perdeAc(`<h3>İkimizin mutfağı</h3>
-      <p style="line-height:1.6">${kacir(OTURUM.kullanici?.email || '')} hesabıyla giriş yaptın. Tarifler ve alışveriş listesi yalnızca izinli iki hesaba açık.</p>
+      <p style="line-height:1.6">${kacir(OTURUM.kullanici?.email || '')} hesabıyla giriş yaptın. Tarifler ve alışveriş listesi yalnızca izin verilen hesaplara açık.</p>
       <p><button class="dugme ikincil" data-eylem="cikis">Hesaptan çık</button></p>
       <div class="dugme-satiri">
         <button class="dugme" data-eylem="disa-aktar">Yedek dosyası indir</button>
