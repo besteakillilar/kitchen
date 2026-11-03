@@ -370,6 +370,87 @@
     .ikili{grid-template-columns:1fr;}
   }
   @media(prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important;}}
+
+  /* Telefon yerleşimi: güvenli alanlar, taşmayan içerik ve dokunma hedefleri. */
+  html{background:var(--krem);-webkit-text-size-adjust:100%;scroll-padding-bottom:120px;}
+  body{background:var(--krem);}
+  #uygulama{min-height:100dvh;padding-bottom:calc(112px + env(safe-area-inset-bottom,0px));}
+  #uygulama[data-ekran="giris"],#uygulama[data-ekran="acilis"]{padding-bottom:0;}
+  button,input,textarea,select{-webkit-tap-highlight-color:transparent;}
+  button,a,label[for]{touch-action:manipulation;}
+  input,select,textarea{font-size:16px!important;}
+  input,textarea{scroll-margin-block:90px 160px;}
+  .sarmal,.ust-bar{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));}
+  .ust-bar{padding-top:max(12px,env(safe-area-inset-top,0px));}
+  .ust-bar h2{min-width:0;font-size:clamp(21px,5.5vw,24px);}
+  .ust-bar button{flex:0 0 44px;width:44px;min-height:44px;}
+  .ara-satiri,.arama,.arama input,.tarif-kart,.panel,.urun .ad,.adim p{min-width:0;}
+  .arama input{width:100%;}
+  .tarif-izgara{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .ogun-izgara{grid-template-columns:repeat(3,minmax(0,1fr));}
+  .tarif-kart .isim,.urun .ad,.adim p,.malzeme,.not,.kutucuk p{overflow-wrap:anywhere;}
+  .tarif-kart .kapak{width:100%;flex-shrink:0;}
+  .dugme,.cip,.reyon-cip,.acilir-oge,.geri,.bolum-basligi .yan{min-height:44px;}
+  .kalp{width:44px;height:44px;top:6px;right:6px;}
+  .urun .sil,.onizleme .kaldir{width:44px;height:44px;flex-shrink:0;display:grid;place-items:center;}
+  .urun .simge{flex-shrink:0;}
+  .adim .no{flex-basis:44px;height:44px;}
+  .kapak-profil{min-width:44px;min-height:44px;left:auto;right:4%;}
+  .alt-menu{bottom:calc(10px + env(safe-area-inset-bottom,0px));width:calc(100% - 24px);padding:6px;gap:2px;}
+  .menu-dugme{min-width:0;min-height:54px;font-size:12px;}
+  .ekle-dugme{bottom:calc(96px + env(safe-area-inset-bottom,0px));}
+  .bildirim{bottom:calc(96px + env(safe-area-inset-bottom,0px));width:max-content;max-width:calc(100% - 32px);text-align:center;border-radius:18px;overflow-wrap:anywhere;}
+  .acilis{padding-top:max(16px,env(safe-area-inset-top,0px));padding-bottom:max(20px,env(safe-area-inset-bottom,0px));overflow-y:auto;}
+  .acilis > img{max-height:54dvh;flex-shrink:1;min-height:0;}
+  .tencere-alan{flex-shrink:0;}
+  .perde{padding:max(16px,env(safe-area-inset-top,0px)) 16px max(16px,env(safe-area-inset-bottom,0px));}
+  .kutucuk{max-height:calc(100dvh - 48px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));overscroll-behavior:contain;}
+  .giris-sayfa{min-height:100dvh;display:grid;place-items:center;padding:max(24px,env(safe-area-inset-top,0px)) 20px max(24px,env(safe-area-inset-bottom,0px));}
+  .giris-kart{max-width:420px;min-width:0;width:100%;text-align:center;background:var(--kart);padding:28px 22px;border-radius:28px;box-shadow:var(--golge);}
+  .giris-kart h1{font-size:clamp(26px,7vw,32px);line-height:1.25;margin:18px 0 12px;}
+  .giris-kart p{overflow-wrap:anywhere;line-height:1.6;font-size:16px;}
+  .giris-kart .dugme{width:100%;min-height:48px;}
+  .giris-kart summary{min-height:44px;padding:12px 0;cursor:pointer;}
+  @media(min-width:660px){.tarif-izgara{grid-template-columns:repeat(3,minmax(0,1fr));}}
+  @media(max-width:600px){
+    .ust-panel{padding-top:20px;border-radius:26px 26px 0 0;}
+    .soru{font-size:23px;line-height:1.3;}
+    .soru-alt{font-size:14px;line-height:1.5;}
+    .tarif-izgara{gap:12px;}
+    .tarif-kart{border-radius:18px;}
+    .tarif-kart .govde{padding:10px;}
+    .tarif-kart .isim{font-size:16px;}
+    .meta{gap:6px 10px;font-size:12px;}
+    .detay-izgara{grid-template-columns:minmax(0,1fr);gap:14px;}
+    .detay-baslik{font-size:26px;margin-top:16px;}
+    .panel{padding:16px;border-radius:20px;}
+    .ikili{grid-template-columns:minmax(0,1fr);gap:0;}
+    .alan{margin-bottom:20px;}
+    .alan input,.alan select{min-height:48px;}
+    .alan textarea{min-height:150px;}
+    .dugme-satiri>.dugme{flex:1 1 140px;}
+    .liste-ust{padding:16px;}
+    .reyonlar{margin-inline:-16px;padding-inline:16px;}
+    .reyon-kart{padding:4px 14px 10px;}
+    .urun{gap:9px;min-height:60px;padding:8px 0;}
+    .ekle-kutu input{min-height:44px;}
+    .ekle-kutu button{flex-basis:44px;height:44px;}
+    .kutucuk{padding:22px 18px;border-radius:24px;}
+    .bos{padding:36px 12px;}
+    /* Klavye açıldığında sabit menü giriş alanını örtmesin. */
+    body:has(input:focus,textarea:focus) .alt-menu,
+    body:has(input:focus,textarea:focus) .ekle-dugme{visibility:hidden;pointer-events:none;}
+  }
+  @media(max-width:360px){
+    .sarmal{padding-inline:12px;}
+    .ogun-izgara{gap:6px;}
+    .soru{font-size:21px;}
+    .giris-sayfa{padding-inline:14px;}
+    .giris-kart{padding:24px 18px;}
+    .liste-ozet{flex-wrap:wrap;}
+    .tarif-izgara{gap:8px;}
+  }
+
 </style>
 
 <div id="uygulama"><div class="yukleniyor">Mutfak hazırlanıyor…</div></div>
@@ -418,8 +499,8 @@
   }
   function girisEkrani(){
     const u = OTURUM.kullanici;
-    return `<main style="min-height:100dvh;display:grid;place-items:center;padding:24px">
-      <section style="max-width:420px;width:100%;text-align:center;background:var(--kart);padding:32px 24px;border-radius:28px;box-shadow:0 8px 40px #573c2310">
+    return `<main class="giris-sayfa">
+      <section class="giris-kart">
         <img src="ikon-192.png" alt="" width="88" height="88" style="border-radius:24px">
         <h1 style="font-family:'Baloo 2',sans-serif">Emre’nin Mutfağı</h1>
         <p>İkimize ait tarifler, birlikte hazırladığımız listeler.</p>
@@ -976,7 +1057,7 @@
           <input id="f-not" type="text" value="${kacir(t.not||'')}" placeholder="Üstüne tarçın çok yakışıyor">
         </div>
         <button class="dugme tam" data-eylem="kaydet">${t.id?'Değişiklikleri kaydet':'Tarifi kaydet'}</button>
-        <p class="kaynak" style="margin-top:12px">Kaydettiğin tarifi aynı adresi açan herkes görür.</p>
+        <p class="kaynak" style="margin-top:12px">Kaydettiğin tarifi yalnızca mutfağa erişim izni olan hesaplar görür.</p>
       </div>
     </div>`;
   }
@@ -992,6 +1073,7 @@
 
   function ciz(){
     const k = document.getElementById('uygulama');
+    k.dataset.ekran = OTURUM.durum==='acik' ? D.ekran : 'giris';
     if(OTURUM.durum!=='acik'){ k.innerHTML=girisEkrani(); return; }
     let govde='';
     if(!D.hazir) govde = `<div class="yukleniyor">Mutfak hazırlanıyor…</div>`;

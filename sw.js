@@ -1,4 +1,4 @@
-const SURUM = 'mutfak-v3-ozel';
+const SURUM = 'mutfak-v4-mobil';
 const DOSYALAR = ['./', './index.html', './ayarlar.js', './manifest.webmanifest',
   './ikon-192.png', './ikon-512.png', './ikon-maskable-512.png', './apple-touch-icon.png'];
 self.addEventListener('install', e => {
